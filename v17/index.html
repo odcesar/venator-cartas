@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Venator · carta v17</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; display: grid; place-items: center;
+  background: #09090b; padding: 24px 16px;
+}
+.cena { perspective: 900px; }
+.carta {
+  position: relative; width: min(420px, 86vw); aspect-ratio: 3 / 4;
+  border-radius: 14px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 35%, #1a1716 0%, #0b0a0b 60%, #050505 100%);
+  box-shadow: 0 0 0 1px #3a3530, 0 24px 60px rgb(0 0 0 / .65);
+  transition: transform .25s cubic-bezier(.23, 1, .32, 1);
+}
+.camada {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; user-select: none;
+  transition: transform .25s cubic-bezier(.23, 1, .32, 1);
+}
+.cruz { overflow: visible; }
+
+/* pulsação automática da cruz: o brilho cresce e diminui sozinho, num ciclo de 3,2 s */
+.cruz polygon { animation: pulsa 3.2s ease-in-out infinite; }
+@keyframes pulsa {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 4px rgb(255 244 228 / .9))
+      drop-shadow(0 0 16px rgb(255 244 228 / .6))
+      drop-shadow(0 0 40px rgb(255 236 210 / .35));
+    opacity: .9;
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 8px rgb(255 248 236 / 1))
+      drop-shadow(0 0 32px rgb(255 244 228 / .85))
+      drop-shadow(0 0 80px rgb(255 236 210 / .55));
+    opacity: 1;
+  }
+}
+
+.personagem { z-index: 2; object-fit: cover; }
+.vinheta { z-index: 3; background: radial-gradient(130% 100% at 50% 40%, transparent 55%, rgb(0 0 0 / .55) 100%); }
+.moldura { z-index: 4; border-radius: 14px; box-shadow: inset 0 0 0 2px rgb(255 239 215 / .18); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cruz polygon { animation: none; }
+  .carta, .camada { transition: none; }
+}
+
+.voltar { position: fixed; top: 16px; left: 16px; color: #ffefd7; font: 14px system-ui, sans-serif; opacity: .7; }
+</style>
+</head>
+<body>
+<a class="voltar" href="../">← cartas</a>
+<div class="cena">
+  <div class="carta" id="carta">
+    <!-- cruz do Venator (contorno da partícula do jogo), desenhada em vetor: nítida em qualquer tamanho -->
+    <svg class="camada cruz" viewBox="0 0 1080 1440" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="miolo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffffff"/>
+          <stop offset="1" stop-color="#fff3e2"/>
+        </linearGradient>
+      </defs>
+      <polygon fill="url(#miolo)" points="208,-80 197,152 133,180 -80,158 -80,395 126,386 200,437 201,1220 147,1362 235,1520 372,1520 425,1409 475,1351 422,1211 433,440 498,401 680,426 728,374 746,296 683,189 495,199 441,171 435,161 426,-80"/>
+    </svg>
+    <!-- Venator recortado (fundo transparente). Troque o link pela URL onde você subiu o venator.webp -->
+    <img class="camada personagem" id="personagem" src="venator.webp" alt="Venator">
+    <div class="camada vinheta"></div>
+    <div class="camada moldura"></div>
+  </div>
+</div>
+
+<script>
+// inclinação com o mouse (opcional): a cruz anda menos que o personagem, e ele parece sair da carta
+const carta = document.getElementById('carta');
+const cruz = carta.querySelector('.cruz');
+const pers = document.getElementById('personagem');
+const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+carta.addEventListener('pointermove', (e) => {
+  if (reduz) return;
+  const r = carta.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width - 0.5;
+  const y = (e.clientY - r.top) / r.height - 0.5;
+  carta.style.transform = `rotateY(${x * 14}deg) rotateX(${-y * 12}deg)`;
+  cruz.style.transform = `translate(${x * -6}px, ${y * -6}px) scale(1.02)`;
+  pers.style.transform = `translate(${x * 10}px, ${y * 8}px) scale(1.03)`;
+});
+
+carta.addEventListener('pointerleave', () => {
+  carta.style.transform = '';
+  cruz.style.transform = '';
+  pers.style.transform = '';
+});
+
+</script>
+</body>
+</html>
