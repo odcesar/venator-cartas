@@ -1,0 +1,15 @@
+{
+ "width": 350,
+ "height": 505,
+ "pad": {
+  "top": 385,
+  "right": 95,
+  "bottom": 26,
+  "left": 255
+ },
+ "restTop": 97,
+ "fitTop": 285,
+ "back": {
+  "mode": "package"
+ }
+}

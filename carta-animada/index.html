@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OSES · carta animada (Venator)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0b0d; color: #a1a1aa; font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  main { position: fixed; inset: 0; display: grid; place-items: center; }
+  .coluna { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .palco { position: relative; }
+  .escala { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .perspectiva { perspective: 1400px; touch-action: pan-y; }
+  .gira { position: relative; width: 350px; height: 505px; transform-style: preserve-3d; }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; }
+  .face.verso { transform: rotateY(180deg); }
+  .face iframe { position: absolute; border: 0; background: transparent; pointer-events: none; color-scheme: normal; }
+  .alvo { position: absolute; inset: 0; z-index: 2; cursor: pointer; background: none; border: 0; border-radius: 12px; }
+  .alvo:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .linha { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; justify-content: center; }
+  button.ver { min-height: 44px; padding: 8px 16px; border-radius: 12px; border: 1px solid #3f3f46; background: #18181b; color: #e4e4e7;
+               font: 700 12px system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  button.ver:hover { color: #fff; } button.ver:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  footer { position: fixed; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 11px; opacity: .55; }
+</style>
+</head>
+<body>
+<main>
+  <div class="coluna">
+    <div class="palco" id="palco">
+      <div class="escala" id="escala">
+        <div class="perspectiva" id="perspectiva">
+          <div class="gira" id="gira">
+            <div class="face frente" id="frente"><button class="alvo" id="alvo" aria-label="Animar a carta"></button></div>
+            <div class="face verso" id="verso"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="linha"><button class="ver" id="ver" aria-pressed="false">Ver verso</button><span id="dica">Arraste para girar · Clique para ver a animação</span></div>
+  </div>
+</main>
+<footer>Carta personalizada do OSES (Venator) · prévia da proposta para o Deadlock Cards · projeto de fã, sem afiliação com a Valve</footer>
+<script>
+// A mesma montagem que o site faz para a carta personalizada: o pacote roda num iframe isolado (sandbox),
+// window.CARD traz os dados, {{asset:nome}} vira o endereço do anexo, o clique chega como mensagem.
+const CARD = { id: 'p-oses', name: 'OSES', ovr: 91, position: 'Carry', hero: 'Venator', footer: 'Cardslock',
+  stats: { MIR: 92, MAC: 91, SUP: 78, MOV: 93, POL: 90, CON: 84 } };
+const CLIQUE = 'cardslock:click';
+const $ = (id) => document.getElementById(id);
+
+async function texto(n) { return (await fetch('pacote/' + n)).text(); }
+function documento(p, codigo, urls, face, bleed, pad) {
+  const comAnexos = (t) => t.replace(/\{\{\s*asset:([\w.-]+)\s*\}\}/g, (_, n) => urls[n] || '');
+  const card = { ...CARD, assets: urls, box: { width: p.width, height: p.height, pad }, face, bleed };
+  const json = JSON.stringify(card).replace(/</g, '\\u003c');
+  const css = comAnexos(codigo.css).replace(/<\/style/gi, '<\\/style'), js = comAnexos(codigo.js).replace(/<\/script/gi, '<\\/script');
+  const base = new URL('pacote/', location.href).href;
+  return `<!doctype html><html><head><meta charset="utf-8"><base href="${base}">
+<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden;width:100%;height:100%}
+:root{--card-x:${pad.left}px;--card-y:${pad.top}px;--card-w:${p.width}px;--card-h:${p.height}px}</style>
+<style>${css}</style></head><body>${comAnexos(codigo.html)}
+<script>window.CARD=${json};window.ASSET=function(n){return window.CARD.assets[n]||""};
+addEventListener("message",function(e){if(!e.data||e.data.type!=="${CLIQUE}")return;var x=${pad.left + p.width / 2},y=${pad.top + p.height / 2},el=document.elementFromPoint(x,y)||document.body;
+el.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,clientX:x,clientY:y}))});<\/script>
+<script>${js}<\/script></body></html>`;
+}
+function iframe(doc, p, pad) {
+  const f = document.createElement('iframe');
+  f.title = 'Carta OSES'; f.setAttribute('sandbox', 'allow-scripts'); f.tabIndex = -1; f.srcdoc = doc;
+  Object.assign(f.style, { left: -pad.left + 'px', top: -pad.top + 'px', width: p.width + pad.left + pad.right + 'px', height: p.height + pad.top + pad.bottom + 'px' });
+  return f;
+}
+
+(async () => {
+  const [p, nomes, html, css, js] = await Promise.all([fetch('pacote/pacote.json').then(r => r.json()), fetch('pacote/anexos.json').then(r => r.json()), texto('carta.html'), texto('carta.css'), texto('carta.js')]);
+  const urls = Object.fromEntries(nomes.map(n => [n, new URL('pacote/' + n, location.href).href]));
+  const codigo = { html, css, js };
+  const frente = iframe(documento(p, codigo, urls, 'front', true, p.pad), p, p.pad);
+  $('frente').prepend(frente);
+  const pv = { top: 40, right: 40, bottom: 40, left: 40 };   // o verso só precisa da folga do monograma
+  $('verso').append(iframe(documento(p, codigo, urls, 'back', true, pv), p, pv));
+  $('alvo').onclick = () => frente.contentWindow.postMessage({ type: CLIQUE }, '*');
+
+  // palco: carta no centro, com espaço para o que sai dela; a subida acima de fitTop pode ser cortada pela tela
+  function encaixa() {
+    const topo = Math.min(p.pad.top, p.fitTop ?? p.pad.top), lado = Math.max(p.pad.left, p.pad.right);
+    const w = lado + p.width + lado, h = topo + p.height + p.pad.bottom;
+    const s = Math.max(.35, Math.min(1.5, (innerWidth - 32) / w, (innerHeight - 110) / h));
+    Object.assign($('palco').style, { width: w * s + 'px', height: h * s + 'px' });
+    Object.assign($('escala').style, { width: w + 'px', height: h + 'px', transform: `scale(${s})`, paddingTop: topo + 'px', paddingLeft: lado + 'px', boxSizing: 'border-box' });
+  }
+  encaixa(); addEventListener('resize', encaixa);
+
+  // giro: botão gira 180°, arrastar gira à vontade e assenta na face mais próxima
+  let rot = 0, alvo = 0, raf = 0, arr = null;
+  const aplica = () => { $('gira').style.transform = `rotateY(${rot}deg)`; const a = ((rot % 360) + 360) % 360, verso = a > 90 && a < 270;
+    $('ver').textContent = verso ? 'Ver frente' : 'Ver verso'; $('ver').setAttribute('aria-pressed', verso); $('dica').textContent = verso ? 'Arraste para girar' : 'Arraste para girar · Clique para ver a animação'; };
+  const anima = () => { cancelAnimationFrame(raf); const passo = () => { rot += (alvo - rot) * .18; if (Math.abs(alvo - rot) < .2) rot = alvo; aplica(); if (rot !== alvo) raf = requestAnimationFrame(passo); }; raf = requestAnimationFrame(passo); };
+  $('ver').onclick = () => { alvo = (Math.round(rot / 180) + 1) * 180; anima(); };
+  const pe = $('perspectiva');
+  pe.addEventListener('pointerdown', (e) => { arr = { x: e.clientX, r: rot, movido: false }; });
+  pe.addEventListener('pointermove', (e) => { if (!arr) return; const dx = e.clientX - arr.x; if (!arr.movido && Math.abs(dx) < 6) return;
+    if (!arr.movido) { arr.movido = true; pe.setPointerCapture(e.pointerId); cancelAnimationFrame(raf); } rot = arr.r + dx * .6; aplica(); });
+  const solta = () => { if (arr?.movido) { alvo = Math.round(rot / 180) * 180; anima(); } setTimeout(() => { arr = null; }, 0); };
+  pe.addEventListener('pointerup', solta); pe.addEventListener('pointercancel', solta);
+  pe.addEventListener('click', (e) => { if (arr?.movido) { e.stopPropagation(); e.preventDefault(); } }, true);
+})();
+</script>
+</body>
+</html>
